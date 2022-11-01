@@ -12,7 +12,7 @@ __global__ void saxpy(float a, float* x, float* y, size_t n) {
 }
 
 __host__ void kernel(float a, float* x, float* y, size_t n, int nbBlocks,
-                       int threadsPerBlock) {
+                     int threadsPerBlock) {
   std::cout << "Blocks: " << nbBlocks << " Threads: " << threadsPerBlock
             << std::endl;
   saxpy<<<nbBlocks, threadsPerBlock>>>(a, x, y, n);
@@ -22,15 +22,16 @@ __host__ void kernel(float a, float* x, float* y, size_t n, int nbBlocks,
 int main(int, char**) {
   // We start with one warp of threads per block, and a block number equal
   // to the number of streaming multiprocessors on  the default device.
-  // We then optimize threads in units of warps and blocks in units of blocks/SM with bounds
-  // determined by the queried device limits.
+  // We then optimize threads in units of warps and blocks in units of blocks/SM
+  // with bounds determined by the queried device limits.
   cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop, 0);
-  auto saxpy_with_self_tuning_launch_parameters = treble::self_tuning<std::chrono::nanoseconds>(
-      kernel, std::placeholders::_1, std::placeholders::_2,
-      std::placeholders::_3, std::placeholders::_4,
-      treble::tunable_param{prop.multiProcessorCount, 1, prop.maxGridSize[0], prop.multiProcessorCount},
-      treble::tunable_param{prop.warpSize, 1, prop.maxThreadsDim[0], prop.warpSize});
+  auto saxpy_with_self_tuning_launch_parameters = treble::self_tuning_back(
+      kernel,
+      treble::tunable_param{prop.multiProcessorCount, 1, prop.maxGridSize[0],
+                            prop.multiProcessorCount},
+      treble::tunable_param{prop.warpSize, 1, prop.maxThreadsDim[0],
+                            prop.warpSize});
 
   float *x, *y;
   int n = 100000000;
