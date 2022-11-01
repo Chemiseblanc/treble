@@ -17,11 +17,11 @@ auto test_func = [](double x, int ms) noexcept -> double {
 // Forwards the given arguments and current trial values of the paramters to the wrapped function and propagates the return value (if any).
 auto func = treble::self_tuning(test_func, std::placeholders::_1,
                                 treble::tunable_param{30/*starting value*/, 0/*min*/, 50/*max*/, 5/*step size*/});
+
+// Counterparts to std::bind_front and std::bind_back are also available
+auto func2 = treble::self_tuning_back(test_func, treble::tunable_param{30, 0, 50, 5});
 ```
 
 Provides a std::bind like interface for creating self-tuning functions with integer parameters.
 
 Currently the only supported objective function is minimizing the execution time of the wrapped function.
-
-## Todo:
-- Complimentary functions providing interfaces similair to bind_front and bind_back

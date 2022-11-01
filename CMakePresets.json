@@ -15,11 +15,20 @@
             "name": "windows",
             "inherits": "base",
             "cacheVariables": {
-                "CMAKE_CXX_COMPILER": "cl.exe"
+                "CMAKE_CXX_COMPILER": "cl.exe",
+                "BUILD_EXAMPLES": "ON",
+                "BENCHMARK_ENABLE_TESTING": "OFF"
             },
             "architecture": {
                 "value": "x64",
                 "strategy": "external"
+            }
+        },
+        {
+            "name": "windows-release",
+            "inherits": "windows",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
             }
         },
         {
