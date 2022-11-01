@@ -1,0 +1,9 @@
+---
+Checks: > # Named parameter checks are disabled since it conflicts with unused parameter warnings.
+    cppcoreguidelines-*,
+    bugprone-*,
+    hicpp-*,-hicpp-named-parameter,
+    modernize-*,-modernize-use-trailing-return-type,
+    performance-*,
+    readability-*,-readability-named-parameter
+FormatStyle: file
