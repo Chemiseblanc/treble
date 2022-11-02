@@ -59,7 +59,8 @@ struct tunable_param {
  * @brief Function object that creates a std::bind like interface for turning a
  * function into a self-tuning function for integer parameters
  */
-template <typename Duration, typename Callable, typename... Args>
+template <typename Duration, typename BindPolicy, typename Callable,
+          typename... Args>
 class self_tuning_function {
  public:
   using duration_type = Duration;
@@ -80,38 +81,21 @@ class self_tuning_function {
    */
   template <typename... FreeArgs>
   constexpr decltype(auto) operator()(FreeArgs &&...args) noexcept(
-      noexcept(call(std::make_index_sequence<sizeof...(Args)>{},
-                    std::forward<FreeArgs>(args)...))) {
+      noexcept(static_cast<BindPolicy *>(this)->call(
+          std::make_index_sequence<sizeof...(Args)>{},
+          std::forward<FreeArgs>(args)...))) {
     scoped_timer<Duration> timer{
         [this](Duration duration) { update_parameters(std::move(duration)); }};
-    return call(std::make_index_sequence<sizeof...(Args)>{},
-                std::forward<FreeArgs>(args)...);
+    return static_cast<BindPolicy *>(this)->call(
+        std::make_index_sequence<sizeof...(Args)>{},
+        std::forward<FreeArgs>(args)...);
   }
 
-  template <typename... FreeArgs>
-  constexpr decltype(auto) apply_front(FreeArgs &&...args) noexcept(
-      noexcept(call_front(std::make_index_sequence<sizeof...(Args)>{},
-                          std::forward<FreeArgs>(args)...))) {
-    scoped_timer<Duration> timer{
-        [this](Duration duration) { update_parameters(std::move(duration)); }};
-    return call_front(std::make_index_sequence<sizeof...(Args)>{},
-                      std::forward<FreeArgs>(args)...);
-  }
-
-  template <typename... FreeArgs>
-  constexpr decltype(auto) apply_back(FreeArgs &&...args) noexcept(
-      noexcept(call_back(std::make_index_sequence<sizeof...(Args)>{},
-                         std::forward<FreeArgs>(args)...))) {
-    scoped_timer<Duration> timer{
-        [this](Duration duration) { update_parameters(std::move(duration)); }};
-    return call_back(std::make_index_sequence<sizeof...(Args)>{},
-                     std::forward<FreeArgs>(args)...);
-  }
-
- private:
+ protected:
   std::decay_t<Callable> func;
   std::tuple<std::decay_t<Args>...> arguments;
 
+ private:
   constexpr const static size_t nb_optimization_vars =
       detail::type_count<tunable_param, Args...>::value();
   using state_type = std::array<tunable_param, nb_optimization_vars>;
@@ -120,44 +104,6 @@ class self_tuning_function {
   size_t iteration = 0;
   Duration starting_time;
   std::array<Duration, 2 * nb_optimization_vars> trial_times;
-
-  /**
-   * @brief Call the wrapped function, replacing the placeholder arguments with
-   *  the corresponding arguments passed to this function and the tuning
-   *  parameters with their current value
-   */
-  template <typename... FreeArgs, size_t... Seq>
-  constexpr decltype(auto)
-  call(std::index_sequence<Seq...>, FreeArgs &&...args) noexcept(noexcept(
-      func((detail::sub_placeholder_by_value<tunable_param, FreeArgs...>{
-          std::forward<FreeArgs>(args)...}[std::get<
-          std::integral_constant<size_t, Seq>::value>(arguments)])...))) {
-    return func((detail::sub_placeholder_by_value<tunable_param, FreeArgs...>{
-        std::forward<FreeArgs>(args)...}[std::get<
-        std::integral_constant<size_t, Seq>::value>(arguments)])...);
-  }
-
-  template <typename... FreeArgs, size_t... Seq>
-  constexpr decltype(auto)
-  call_back(std::index_sequence<Seq...>, FreeArgs &&...args) noexcept(noexcept(
-      func(std::forward<FreeArgs>(args)...,
-           detail::sub_placeholder_by_value<tunable_param>{}[std::get<
-               std::integral_constant<size_t, Seq>::value>(arguments)]...))) {
-    return func(std::forward<FreeArgs>(args)...,
-                detail::sub_placeholder_by_value<tunable_param>{}[std::get<
-                    std::integral_constant<size_t, Seq>::value>(arguments)]...);
-  }
-
-  template <typename... FreeArgs, size_t... Seq>
-  constexpr decltype(auto)
-  call_front(std::index_sequence<Seq...>, FreeArgs &&...args) noexcept(noexcept(
-      func(detail::sub_placeholder_by_value<tunable_param>{}[std::get<
-               std::integral_constant<size_t, Seq>::value>(arguments)]...,
-           std::forward<FreeArgs>(args)...))) {
-    return func(detail::sub_placeholder_by_value<tunable_param>{}[std::get<
-                    std::integral_constant<size_t, Seq>::value>(arguments)]...,
-                std::forward<FreeArgs>(args)...);
-  }
 
   /**
    * @brief Write new values to the tunable parameters in the stored function
@@ -235,38 +181,114 @@ class self_tuning_function {
 };
 
 /**
+ * @brief std::bind like interface for self_tuning_function
+ */
+template <typename Duration, typename Callable, typename... BoundArgs>
+class st_fn_placeholders
+    : public self_tuning_function<
+          Duration, st_fn_placeholders<Duration, Callable, BoundArgs...>,
+          Callable, BoundArgs...> {
+ public:
+  using parent_type =
+      self_tuning_function<Duration,
+                           st_fn_placeholders<Duration, Callable, BoundArgs...>,
+                           Callable, BoundArgs...>;
+  using parent_type::parent_type;
+
+  friend class parent_type;
+
+ private:
+  template <typename... FreeArgs, size_t... Seq>
+  constexpr decltype(auto) call(std::index_sequence<Seq...>,
+                                FreeArgs &&...args) {
+    return func((detail::sub_placeholder_by_value<tunable_param, FreeArgs...>{
+        std::forward<FreeArgs>(args)...}[std::get<
+        std::integral_constant<size_t, Seq>::value>(arguments)])...);
+  }
+};
+
+/**
+ * @brief std::bind_front like interface for self_tuning_function
+ */
+template <typename Duration, typename Callable, typename... BoundArgs>
+class st_fn_front
+    : public self_tuning_function<Duration,
+                                  st_fn_front<Duration, Callable, BoundArgs...>,
+                                  Callable, BoundArgs...> {
+ public:
+  using parent_type =
+      self_tuning_function<Duration,
+                           st_fn_front<Duration, Callable, BoundArgs...>,
+                           Callable, BoundArgs...>;
+  using parent_type::parent_type;
+
+  friend class parent_type;
+
+ private:
+  template <typename... FreeArgs, size_t... Seq>
+  constexpr decltype(auto) call(std::index_sequence<Seq...>,
+                                FreeArgs &&...args) {
+    return func(detail::sub_placeholder_by_value<tunable_param>{}[std::get<
+                    std::integral_constant<size_t, Seq>::value>(arguments)]...,
+                std::forward<FreeArgs>(args)...);
+  }
+};
+
+/**
+ * @brief std::bind_back like interface for self_tuning_function
+ */
+template <typename Duration, typename Callable, typename... BoundArgs>
+class st_fn_back
+    : public self_tuning_function<Duration,
+                                  st_fn_back<Duration, Callable, BoundArgs...>,
+                                  Callable, BoundArgs...> {
+ public:
+  using parent_type =
+      self_tuning_function<Duration,
+                           st_fn_back<Duration, Callable, BoundArgs...>,
+                           Callable, BoundArgs...>;
+  using parent_type::parent_type;
+
+  friend class parent_type;
+
+ private:
+  template <typename... FreeArgs, size_t... Seq>
+  constexpr decltype(auto) call(std::index_sequence<Seq...>,
+                                FreeArgs &&...args) {
+    return func(std::forward<FreeArgs>(args)...,
+                detail::sub_placeholder_by_value<tunable_param>{}[std::get<
+                    std::integral_constant<size_t, Seq>::value>(arguments)]...);
+  }
+};
+
+/**
  * @brief Factory function to provide a clean interface for creating a new
  * self tuning function wrapper.
  */
-template <typename Duration = std::chrono::microseconds, typename Callable,
+template <typename Duration = std::chrono::nanoseconds, typename Callable,
           typename... Args>
-[[nodiscard]] constexpr self_tuning_function<Duration, Callable, Args...>
+[[nodiscard]] constexpr st_fn_placeholders<Duration, Callable, Args...>
 self_tuning(Callable &&callable, Args &&...args) noexcept {
-  return self_tuning_function<Duration, Callable, Args...>{
+  return st_fn_placeholders<Duration, Callable, Args...>{
       std::forward<Callable>(callable), std::forward<Args>(args)...};
 }
 
 template <typename Duration = std::chrono::nanoseconds, typename Callable,
           typename... Args>
-[[nodiscard]] constexpr auto self_tuning_front(Callable &&callable,
-                                               Args &&...args) {
-  return [func = self_tuning_function<Duration, Callable, Args...>{
-              std::forward<Callable>(callable),
-              std::forward<Args>(args)...}](auto &&...freeArgs) mutable {
-    return func.apply_front(std::forward<decltype(freeArgs)>(freeArgs)...);
-  };
+[[nodiscard]] constexpr st_fn_front<Duration, Callable, Args...> st_front(
+    Callable &&callable, Args &&...args) {
+  return st_fn_front<Duration, Callable, Args...>{
+      std::forward<Callable>(callable), std::forward<Args>(args)...};
 }
 
 template <typename Duration = std::chrono::nanoseconds, typename Callable,
           typename... Args>
-[[nodiscard]] constexpr auto self_tuning_back(Callable &&callable,
-                                              Args &&...args) {
-  return [func = self_tuning_function<Duration, Callable, Args...>{
-              std::forward<Callable>(callable),
-              std::forward<Args>(args)...}](auto &&...freeArgs) mutable {
-    return func.apply_back(std::forward<decltype(freeArgs)>(freeArgs)...);
-  };
+[[nodiscard]] constexpr st_fn_back<Duration, Callable, Args...> st_back(
+    Callable &&callable, Args &&...args) {
+  return st_fn_back<Duration, Callable, Args...>{
+      std::forward<Callable>(callable), std::forward<Args>(args)...};
 }
+
 }  // namespace treble
 
 #endif  // TREBLE_SELF_TUNING_FUNCTION_H

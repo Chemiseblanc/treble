@@ -14,7 +14,7 @@ static __global__ void saxpy(float a, float* x, float* y, size_t n) {
 }
 
 static __host__ void kernel(float a, float* x, float* y, size_t n, int nbBlocks,
-                     int threadsPerBlock) {
+                            int threadsPerBlock) {
   // std::cout << "Blocks: " << nbBlocks << " Threads: " << threadsPerBlock
   //           << std::endl;
   saxpy<<<nbBlocks, threadsPerBlock>>>(a, x, y, n);
@@ -46,7 +46,7 @@ static void manual_suboptimal_parameters(benchmark::State& state) {
   cudaMalloc(&x, n * sizeof(float));
   cudaMalloc(&y, n * sizeof(float));
   for (auto _ : state) {
-    kernel(1., x, y, n, 10*prop.multiProcessorCount, 256);
+    kernel(1., x, y, n, 10 * prop.multiProcessorCount, 256);
   }
 
   cudaFree(x);
@@ -81,38 +81,14 @@ static void self_tuning(benchmark::State& state) {
 }
 BENCHMARK(self_tuning)->MinTime(10);
 
-static void self_tuning_back(benchmark::State& state) {
-  cudaDeviceProp prop;
-  cudaGetDeviceProperties(&prop, 0);
-  auto stfunc = treble::self_tuning_back(
-      kernel,
-      treble::tunable_param{prop.multiProcessorCount, 1, prop.maxGridSize[0],
-                            prop.multiProcessorCount},
-      treble::tunable_param{prop.warpSize, 1, prop.maxThreadsDim[0],
-                            prop.warpSize});
-
-  float *x, *y;
-  int n = 100000000;
-
-  cudaMalloc(&x, n * sizeof(float));
-  cudaMalloc(&y, n * sizeof(float));
-  for (auto _ : state) {
-    stfunc(1., x, y, n);
-  }
-  cudaFree(x);
-  cudaFree(y);
-}
-BENCHMARK(self_tuning_back)->MinTime(10);
-
 static void self_tuning_good_initial_guess(benchmark::State& state) {
   cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop, 0);
-  auto stfunc = treble::self_tuning_back(
+  auto stfunc = treble::st_back(
       kernel,
-      treble::tunable_param{10*prop.multiProcessorCount, 1, prop.maxGridSize[0],
-                            prop.multiProcessorCount},
-      treble::tunable_param{256, 1, prop.maxThreadsDim[0],
-                            prop.warpSize});
+      treble::tunable_param{10 * prop.multiProcessorCount, 1,
+                            prop.maxGridSize[0], prop.multiProcessorCount},
+      treble::tunable_param{256, 1, prop.maxThreadsDim[0], prop.warpSize});
 
   float *x, *y;
   int n = 100000000;

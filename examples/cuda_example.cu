@@ -26,7 +26,7 @@ int main(int, char**) {
   // with bounds determined by the queried device limits.
   cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop, 0);
-  auto saxpy_with_self_tuning_launch_parameters = treble::self_tuning_back(
+  auto saxpy_with_self_tuning_launch_parameters = treble::st_back(
       kernel,
       treble::tunable_param{prop.multiProcessorCount, 1, prop.maxGridSize[0],
                             prop.multiProcessorCount},
