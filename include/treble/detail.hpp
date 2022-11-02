@@ -131,6 +131,11 @@ constexpr static void scatter_array_to_tuple(std::tuple<Ts...> &tpl,
                                              std::array<T, N> &arr) noexcept {
   scatter_array_to_tuple_impl<T, N, 0, 0, Ts...>::exec(tpl, arr);
 }
+
+template <typename OptVar, typename... BoundArgs>
+struct state_vector {
+  using type = std::array<OptVar, type_count<OptVar, BoundArgs...>::value()>;
+};
 }  // namespace detail
 }  // namespace treble
 
