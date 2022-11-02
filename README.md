@@ -19,7 +19,7 @@ auto func = treble::self_tuning(test_func, std::placeholders::_1,
                                 treble::tunable_param{30/*starting value*/, 0/*min*/, 50/*max*/, 5/*step size*/});
 
 // Counterparts to std::bind_front and std::bind_back are also available
-auto func2 = treble::self_tuning_back(test_func, treble::tunable_param{30, 0, 50, 5});
+auto func2 = treble::st_back(test_func, treble::tunable_param{30, 0, 50, 5});
 ```
 
 Provides a std::bind like interface for creating self-tuning functions with integer parameters.
