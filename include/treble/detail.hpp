@@ -139,4 +139,4 @@ struct state_vector {
 }  // namespace detail
 }  // namespace treble
 
-#endif TREBLE_DETAIL_H
+#endif  // TREBLE_DETAIL_H

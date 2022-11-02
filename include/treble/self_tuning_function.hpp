@@ -206,18 +206,20 @@ class st_fn_placeholders
       Callable, BoundArgs...>;
   using parent_type::parent_type;
 
-  friend class parent_type;
+  friend parent_type;
 
  private:
   template <typename... FreeArgs, size_t... Seq>
   constexpr decltype(auto)
-  call(std::index_sequence<Seq...>, FreeArgs &&...args) noexcept(noexcept(
-      func((detail::sub_placeholder_by_value<tunable_param, FreeArgs...>{
-          std::forward<FreeArgs>(args)...}[std::get<
-          std::integral_constant<size_t, Seq>::value>(arguments)])...))) {
-    return func((detail::sub_placeholder_by_value<tunable_param, FreeArgs...>{
-        std::forward<FreeArgs>(args)...}[std::get<
-        std::integral_constant<size_t, Seq>::value>(arguments)])...);
+  call(std::index_sequence<Seq...>, FreeArgs &&...args) noexcept(
+      noexcept(parent_type::func(
+          (detail::sub_placeholder_by_value<tunable_param, FreeArgs...>{
+              std::forward<FreeArgs>(args)...}[std::get<std::integral_constant<
+              size_t, Seq>::value>(parent_type::arguments)])...))) {
+    return parent_type::func(
+        (detail::sub_placeholder_by_value<tunable_param, FreeArgs...>{
+            std::forward<FreeArgs>(args)...}[std::get<std::integral_constant<
+            size_t, Seq>::value>(parent_type::arguments)])...);
   }
 };
 
@@ -236,18 +238,22 @@ class st_fn_front
                            Callable, BoundArgs...>;
   using parent_type::parent_type;
 
-  friend class parent_type;
+  friend parent_type;
 
  private:
   template <typename... FreeArgs, size_t... Seq>
   constexpr decltype(auto)
-  call(std::index_sequence<Seq...>, FreeArgs &&...args) noexcept(noexcept(func(
-      detail::sub_placeholder_by_value<tunable_param>{}
-          [std::get<std::integral_constant<size_t, Seq>::value>(arguments)]...,
-      std::forward<FreeArgs>(args)...))) {
-    return func(detail::sub_placeholder_by_value<tunable_param>{}[std::get<
-                    std::integral_constant<size_t, Seq>::value>(arguments)]...,
-                std::forward<FreeArgs>(args)...);
+  call(std::index_sequence<Seq...>, FreeArgs &&...args) noexcept(
+      noexcept(parent_type::func(
+          detail::sub_placeholder_by_value<tunable_param>{}
+              [std::get<std::integral_constant<size_t, Seq>::value>(
+                  parent_type::arguments)]...,
+          std::forward<FreeArgs>(args)...))) {
+    return parent_type::func(
+        detail::sub_placeholder_by_value<tunable_param>{}
+            [std::get<std::integral_constant<size_t, Seq>::value>(
+                parent_type::arguments)]...,
+        std::forward<FreeArgs>(args)...);
   }
 };
 
@@ -266,18 +272,22 @@ class st_fn_back
                            Callable, BoundArgs...>;
   using parent_type::parent_type;
 
-  friend class parent_type;
+  friend parent_type;
 
  private:
   template <typename... FreeArgs, size_t... Seq>
   constexpr decltype(auto)
-  call(std::index_sequence<Seq...>, FreeArgs &&...args) noexcept(noexcept(
-      func(std::forward<FreeArgs>(args)...,
-           detail::sub_placeholder_by_value<tunable_param>{}[std::get<
-               std::integral_constant<size_t, Seq>::value>(arguments)]...))) {
-    return func(std::forward<FreeArgs>(args)...,
-                detail::sub_placeholder_by_value<tunable_param>{}[std::get<
-                    std::integral_constant<size_t, Seq>::value>(arguments)]...);
+  call(std::index_sequence<Seq...>, FreeArgs &&...args) noexcept(
+      noexcept(parent_type::func(
+          std::forward<FreeArgs>(args)...,
+          detail::sub_placeholder_by_value<tunable_param>{}
+              [std::get<std::integral_constant<size_t, Seq>::value>(
+                  parent_type::arguments)]...))) {
+    return parent_type::func(
+        std::forward<FreeArgs>(args)...,
+        detail::sub_placeholder_by_value<tunable_param>{}
+            [std::get<std::integral_constant<size_t, Seq>::value>(
+                parent_type::arguments)]...);
   }
 };
 
