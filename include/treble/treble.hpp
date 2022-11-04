@@ -5,7 +5,8 @@
 //    (See accompanying file LICENSE.txt or copy at
 //          https://www.boost.org/LICENSE_1_0.txt)
 
-#include "treble/scoped_timer.hpp"
+#include "treble/optimizers/optimizers.hpp"
+#include "treble/probes/probes.hpp"
 #include "treble/self_tuning_function.hpp"
 
 #endif  // TREBLE_HPP

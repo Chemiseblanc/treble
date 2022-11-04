@@ -23,9 +23,14 @@ include(AddLib)
 add_lib(treble
     HEADER_ONLY
     SOURCES
-        include/treble/scoped_timer.hpp
-        include/treble/self_tuning_function.hpp
         include/treble/treble.hpp
+        include/treble/self_tuning_function.hpp
+        include/treble/param.hpp
+        include/treble/detail.hpp
+        include/treble/probes/probes.hpp
+        include/treble/probes/scoped_timer.hpp
+        include/treble/optimizers/optimizers.hpp
+        include/treble/optimizers/incremental_sub_gradient.hpp
     INCLUDE_DIRS
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     COMPILE_FEATURES

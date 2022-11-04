@@ -11,7 +11,8 @@
 #include <utility>
 
 #include "treble/detail.hpp"
-#include "treble/scoped_timer.hpp"
+#include "treble/optimizers/incremental_sub_gradient.hpp"
+#include "treble/param.hpp"
 
 namespace treble {
 namespace detail {
@@ -44,116 +45,6 @@ struct sub_placeholder_by_value {
   }
 };
 }  // namespace detail
-
-/**
- * @brief Aggregate type for holding parameter information
- */
-struct tunable_param {
-  int value;
-  int min;
-  int max;
-  int step;
-};
-
-template <typename Duration = std::chrono::nanoseconds, typename... BoundArgs>
-class IncSubGrad {
- public:
-  using tuple_type = std::tuple<std::decay_t<BoundArgs>...>;
-  using state_type =
-      typename detail::state_vector<tunable_param, BoundArgs...>::type;
-  using probe_type = scoped_timer<Duration>;
-
- private:
-  tuple_type &arguments;
-  state_type stored_state{copy_current_state()};
-  constexpr static size_t nb_optimization_vars =
-      std::tuple_size<state_type>::value;
-  size_t iteration = 0;
-  Duration starting_time;
-  std::array<Duration, 2 * nb_optimization_vars> trial_times;
-
- public:
-  constexpr explicit IncSubGrad(tuple_type &args) noexcept : arguments{args} {};
-
-  constexpr scoped_timer<Duration> make_probe() noexcept {
-    return scoped_timer<Duration>{
-        [this](Duration duration) { evaluate(std::move(duration)); }};
-  }
-
- private:
-  /**
-   * @brief Write new values to the tunable parameters in the stored function
-   *  argument list
-   */
-  constexpr void update_state(state_type &state) noexcept {
-    detail::scatter_array_to_tuple(arguments, state);
-  }
-
-  /**
-   * @brief Copy the tunable paramters from the stored function argument list
-   *  into an array
-   */
-  constexpr state_type copy_current_state() noexcept {
-    return detail::gather_array_from_tuple<tunable_param>(arguments);
-  }
-  /**
-   * @brief Entrypoint into the optimization routine. This is called once after
-   *  each return of the wrapped function.
-   *
-   * Implements a technique similar to an incremental subgradient method for
-   * optimizing non-differentialble functions.
-   */
-  constexpr void evaluate(Duration duration) noexcept {
-    // Save the timing information
-    iteration == 0 ? starting_time = std::move(duration)
-                   : trial_times.at(iteration - 1) = std::move(duration);
-
-    if (iteration > 0 && iteration % trial_times.size() == 0) {
-      // Run single iteration of discrete gradient descent after
-      // adjacent locations of the parameter space have been sampled
-      state_type new_state = stored_state;
-      for (size_t i = 0; i < nb_optimization_vars; ++i) {
-        tunable_param &param = new_state[i];
-        size_t bw_idx = 2 * i;
-        size_t fw_idx = 2 * i + 1;
-
-        Duration &bw_time = trial_times.at(bw_idx);
-        Duration &fw_time = trial_times.at(fw_idx);
-
-        if (bw_time < fw_time) {
-          if (bw_time < starting_time) {
-            param.value = std::max(param.min, param.value - param.step);
-          }
-        } else {
-          if (fw_time < starting_time) {
-            param.value = std::min(param.max, param.value + param.step);
-          }
-        }
-      }
-      stored_state = std::move(new_state);
-      update_state(stored_state);
-      iteration = 0;
-    } else {
-      // Sample the next location in the parameter space
-      // The format of trial_times is
-      // [param 1 backward step, param 1 forward step, param 2 backward step...]
-      enum { BACKWARD = 0, FORWARD = 1 };
-      size_t param_idx = iteration / 2;
-      size_t param_dir = iteration % 2;
-
-      state_type trial_state = stored_state;
-      tunable_param &param = trial_state[param_idx];
-      if (param_dir == BACKWARD) {
-        param.value = std::max(param.min, param.value - param.step);
-      } else if (param_dir == FORWARD) {
-        param.value = std::min(param.max, param.value + param.step);
-      }
-
-      update_state(trial_state);
-      ++iteration;
-    }
-  }
-};
 
 /**
  * @brief Function object that creates a std::bind like interface for turning a
@@ -295,26 +186,29 @@ class st_fn_back
  * @brief Factory function to provide a clean interface for creating a new
  * self tuning function wrapper.
  */
-template <typename Callable, typename... Args,
-          typename Optimizer = IncSubGrad<std::chrono::nanoseconds, Args...>>
+template <typename Optimizer = IncrementalSubGradient, typename Callable,
+          typename... Args>
 [[nodiscard]] constexpr auto self_tuning(Callable &&callable,
                                          Args &&...args) noexcept {
-  return st_fn_placeholders<Optimizer, Callable, Args...>{
-      std::forward<Callable>(callable), std::forward<Args>(args)...};
+  return st_fn_placeholders<
+      decltype(Optimizer::make(std::forward<Args>(args)...)), Callable,
+      Args...>{std::forward<Callable>(callable), std::forward<Args>(args)...};
 }
 
-template <typename Callable, typename... Args,
-          typename Optimizer = IncSubGrad<std::chrono::nanoseconds, Args...>>
+template <typename Optimizer = IncrementalSubGradient, typename Callable,
+          typename... Args>
 [[nodiscard]] constexpr auto st_front(Callable &&callable, Args &&...args) {
-  return st_fn_front<Optimizer, Callable, Args...>{
-      std::forward<Callable>(callable), std::forward<Args>(args)...};
+  return st_fn_front<decltype(Optimizer::make(std::forward<Args>(args)...)),
+                     Callable, Args...>{std::forward<Callable>(callable),
+                                        std::forward<Args>(args)...};
 }
 
-template <typename Callable, typename... Args,
-          typename Optimizer = IncSubGrad<std::chrono::nanoseconds, Args...>>
+template <typename Optimizer = IncrementalSubGradient, typename Callable,
+          typename... Args>
 [[nodiscard]] constexpr auto st_back(Callable &&callable, Args &&...args) {
-  return st_fn_back<Optimizer, Callable, Args...>{
-      std::forward<Callable>(callable), std::forward<Args>(args)...};
+  return st_fn_back<decltype(Optimizer::make(std::forward<Args>(args)...)),
+                    Callable, Args...>{std::forward<Callable>(callable),
+                                       std::forward<Args>(args)...};
 }
 
 }  // namespace treble
