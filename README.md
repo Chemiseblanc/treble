@@ -1,8 +1,7 @@
 # Treble
 A header-only library for self-tuning functions.
 
-This was originally developed for finding optimal cuda kernel launch parameters, but can be used
-anywhere you want find optimal parameters for functions on your hot-path.
+Provides a std::bind like interface for creating self-tuning functions with integer parameters.
 
 ```cpp
 // Our function to optimize
@@ -22,6 +21,13 @@ auto func = treble::self_tuning(test_func, std::placeholders::_1,
 auto func2 = treble::st_back(test_func, treble::tunable_param{30, 0, 50, 5});
 ```
 
-Provides a std::bind like interface for creating self-tuning functions with integer parameters.
+## Supported Metrics:
+- [Minimizing CPU Time](include/treble/probes/scoped_timer.hpp)
 
-Currently the only supported objective function is minimizing the execution time of the wrapped function.
+## Supported Optimizers:
+- [Incremental Sub-Gradient Descent](include/treble/optimizers/incremental_sub_gradient.hpp)
+
+Details on how to implement your own [performance metrics](include/treble/probes/probes.hpp) or [optimization routines](include/treble/optimziers/optimizers.hpp) can be found in their respective header files.
+
+## Performance Overhead
+When testing performance with a saxpy cuda kernel, no statistically significant overhead was measured once the optimization routine converged.
