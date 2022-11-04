@@ -21,7 +21,9 @@ class scoped_timer {
   std::function<void(Duration)> on_exit;
 
  public:
-  explicit scoped_timer(std::function<void(Duration)> callback) noexcept
+  using measure_type = Duration;
+
+  explicit scoped_timer(std::function<void(measure_type)> callback) noexcept
       : start{clock::now()}, on_exit{std::move(callback)} {}
   scoped_timer(const scoped_timer &) noexcept = default;
   scoped_timer(scoped_timer &&) noexcept = default;
