@@ -11,7 +11,7 @@
 #include <utility>
 
 #include "treble/detail.hpp"
-#include "treble/optimizers/incremental_sub_gradient.hpp"
+#include "treble/optimizers/compass_search.hpp"
 #include "treble/param.hpp"
 
 namespace treble {
@@ -186,7 +186,7 @@ class st_fn_back
  * @brief Factory function to provide a clean interface for creating a new
  * self tuning function wrapper.
  */
-template <typename Optimizer = IncrementalSubGradient, typename Callable,
+template <typename Optimizer = CompassSearch, typename Callable,
           typename... Args>
 [[nodiscard]] constexpr auto self_tuning(Callable &&callable,
                                          Args &&...args) noexcept {
@@ -195,7 +195,7 @@ template <typename Optimizer = IncrementalSubGradient, typename Callable,
       Args...>{std::forward<Callable>(callable), std::forward<Args>(args)...};
 }
 
-template <typename Optimizer = IncrementalSubGradient, typename Callable,
+template <typename Optimizer = CompassSearch, typename Callable,
           typename... Args>
 [[nodiscard]] constexpr auto st_front(Callable &&callable, Args &&...args) {
   return st_fn_front<decltype(Optimizer::make(std::forward<Args>(args)...)),
@@ -203,7 +203,7 @@ template <typename Optimizer = IncrementalSubGradient, typename Callable,
                                         std::forward<Args>(args)...};
 }
 
-template <typename Optimizer = IncrementalSubGradient, typename Callable,
+template <typename Optimizer = CompassSearch, typename Callable,
           typename... Args>
 [[nodiscard]] constexpr auto st_back(Callable &&callable, Args &&...args) {
   return st_fn_back<decltype(Optimizer::make(std::forward<Args>(args)...)),

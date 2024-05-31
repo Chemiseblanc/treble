@@ -10,7 +10,7 @@
 namespace treble {
 
 template <typename Probe, typename... BoundArgs>
-class IncrementalSubGradientImpl {
+class CompassSearchImpl {
  public:
   using tuple_type = std::tuple<std::decay_t<BoundArgs>...>;
   using state_type =
@@ -28,7 +28,7 @@ class IncrementalSubGradientImpl {
   std::array<measure_type, 2 * nb_optimization_vars> trial_values;
 
  public:
-  constexpr explicit IncrementalSubGradientImpl(tuple_type &args) noexcept
+  constexpr explicit CompassSearchImpl(tuple_type &args) noexcept
       : bound_arguments{args} {};
 
   constexpr probe_type make_probe() noexcept {
@@ -111,10 +111,10 @@ class IncrementalSubGradientImpl {
   }
 };
 
-struct IncrementalSubGradient {
+struct CompassSearch {
   template <typename... Ts>
   static constexpr auto make(Ts &&...ts) noexcept {
-    return IncrementalSubGradientImpl<scoped_timer<std::chrono::nanoseconds>,
+    return CompassSearchImpl<scoped_timer<std::chrono::nanoseconds>,
                                       Ts...>{
         std::make_tuple(std::forward<Ts>(ts)...)};
   }

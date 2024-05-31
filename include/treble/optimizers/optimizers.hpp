@@ -39,6 +39,6 @@ class Optimizer {
 };
 */
 
-#include "treble/optimizers/incremental_sub_gradient.hpp"
+#include "treble/optimizers/compass_search.hpp"
 
 #endif  // TREBLE_OPTIMIZERS_H

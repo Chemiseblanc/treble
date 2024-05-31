@@ -25,7 +25,7 @@ auto func2 = treble::st_back(test_func, treble::tunable_param{30, 0, 50, 5});
 - [Minimizing CPU Time](include/treble/probes/scoped_timer.hpp)
 
 ## Supported Optimizers:
-- [Incremental Sub-Gradient Descent](include/treble/optimizers/incremental_sub_gradient.hpp)
+- [Compass Search](include/treble/optimizers/compass_search.hpp)
 
 Details on how to implement your own [performance metrics](include/treble/probes/probes.hpp) or [optimization routines](include/treble/optimziers/optimizers.hpp) can be found in their respective header files.
 
